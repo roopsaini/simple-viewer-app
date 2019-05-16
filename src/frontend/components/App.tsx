@@ -5,7 +5,7 @@
 import * as React from "react";
 import { Id64String, OpenMode } from "@bentley/bentleyjs-core";
 import { AccessToken, ConnectClient, IModelQuery, Project, Config } from "@bentley/imodeljs-clients";
-import { IModelApp, IModelConnection, FrontendRequestContext, AuthorizedFrontendRequestContext } from "@bentley/imodeljs-frontend";
+import { IModelApp, IModelConnection, FrontendRequestContext, AuthorizedFrontendRequestContext, Viewport } from "@bentley/imodeljs-frontend";
 import { Presentation, SelectionChangeEventArgs, ISelectionProvider } from "@bentley/presentation-frontend";
 import { Button, ButtonSize, ButtonType, Spinner, SpinnerSize } from "@bentley/ui-core";
 import { SignIn } from "@bentley/ui-components";
@@ -16,6 +16,9 @@ import TreeWidget from "./Tree";
 import ViewportContentControl from "./Viewport";
 import "@bentley/icons-generic-webfont/dist/bentley-icons-generic-webfont.css";
 import "./App.css";
+import { ElementProps, RenderMode } from "@bentley/imodeljs-common";
+import { SampleFeatureOverrideProvider } from "./SampleFeatureOverrideProvider";
+import uniqueRandom from "unique-random";
 
 // tslint:disable: no-console
 // cSpell:ignore imodels
@@ -264,6 +267,46 @@ interface IModelComponentsProps {
 }
 /** Renders a viewport, a tree, a property grid and a table */
 class IModelComponents extends React.PureComponent<IModelComponentsProps> {
+
+  public componentDidMount() {
+    IModelApp.viewManager.onViewOpen.addOnce(async (vp: Viewport) => {
+      // once view renders, set to solid fill
+      this._setSolidRender(vp);
+      // load random list of elements
+      this._loadElements(this.props.imodel).then((elements: ElementProps[]) => {
+            // set feature overrides to alter appearance of elements
+            vp.featureOverrideProvider = new SampleFeatureOverrideProvider(elements);
+          });
+      });
+    }
+
+  private _loadElements = async (imodel: IModelConnection) => {
+    // load all physical elements in the iModel
+    const elements = await imodel.elements.queryProps({ from: "Bis.PhysicalElement" });
+    // extract random subset of elements of given size (in percentage)
+    const randomElements = this._getRandomElements(elements, 0.1);
+
+    return randomElements;
+  }
+
+  private _getRandomElements(elements: ElementProps[], percentage: number) {
+    const randomElements: ElementProps[] = [];
+    const count = Math.floor(elements.length * percentage);
+    Array.from(Array(count)).forEach(() => {
+      const index = uniqueRandom(0, count - 1)();
+      randomElements.push(elements[index]);
+    });
+
+    return randomElements;
+  }
+
+  private _setSolidRender = (vp: Viewport) => {
+    vp.viewFlags.renderMode = RenderMode.SolidFill;
+    vp.sync.invalidateController();
+    vp.target.reset();
+    vp.synchWithView(false);
+  }
+
   public render() {
     // ID of the presentation ruleset used by all of the controls; the ruleset
     // can be found at `assets/presentation_rules/Default.PresentationRuleSet.xml`

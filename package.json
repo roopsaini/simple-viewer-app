@@ -103,6 +103,7 @@
     "@types/puppeteer": "^1.10.0",
     "@types/react": "^16.4.14",
     "@types/react-dom": "16.0.7",
+    "@types/unique-random": "^2.1.0",
     "chai": "^4.2.0",
     "chromedriver": "^2.34.1",
     "electron": "^4.0.1",
@@ -124,6 +125,7 @@
     "ts-node": "^7.0.1",
     "typemoq": "^2.1.0",
     "typescript": "^3.2.2",
+    "unique-random": "^2.1.0",
     "webpack": "^4.20.2",
     "webpack-cli": "^3.1.0",
     "xmlhttprequest": "^1.8.0"
