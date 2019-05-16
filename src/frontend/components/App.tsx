@@ -16,6 +16,9 @@ import TreeWidget from "./Tree";
 import ViewportContentControl from "./Viewport";
 import "@bentley/icons-generic-webfont/dist/bentley-icons-generic-webfont.css";
 import "./App.css";
+import { MarkerDecoration } from "./MarkerDecoration";
+import { GeometricElement3dProps, ElementProps } from "@bentley/imodeljs-common";
+import uniqueRandom from "unique-random";
 
 // tslint:disable: no-console
 // cSpell:ignore imodels
@@ -262,8 +265,51 @@ interface IModelComponentsProps {
   imodel: IModelConnection;
   viewDefinitionId: Id64String;
 }
+
 /** Renders a viewport, a tree, a property grid and a table */
 class IModelComponents extends React.PureComponent<IModelComponentsProps> {
+
+  public componentDidMount() {
+    IModelApp.viewManager.onViewOpen.addOnce(async () => {
+      // once view renders, load random list of element positions
+      this._loadPoints(this.props.imodel).then((positions: number[][]) => {
+            // turn on markers at positions
+            MarkerDecoration.toggle(positions);
+          });
+      });
+    }
+
+  private _loadPoints = async (imodel: IModelConnection) => {
+    const elements = await this._loadElements(imodel);
+    const geometricElements = elements as GeometricElement3dProps[];
+    const positions = [];
+    for (const element of geometricElements) {
+      const positionAr = element.placement!.origin as number[];
+      positions.push(positionAr);
+    }
+    return positions;
+  }
+
+  private _loadElements = async (imodel: IModelConnection) => {
+    // load all physical elements in the iModel
+    const elements = await imodel.elements.queryProps({ from: "Bis.PhysicalElement" });
+    // extract random subset of elements of given size (in percentage)
+    const randomElements = this._getRandomElements(elements, 0.001);
+
+    return randomElements;
+  }
+
+  private _getRandomElements(elements: ElementProps[], percentage: number) {
+    const randomElements: ElementProps[] = [];
+    const count = Math.floor(elements.length * percentage);
+    Array.from(Array(count)).forEach(() => {
+      const index = uniqueRandom(0, count - 1)();
+      randomElements.push(elements[index]);
+    });
+
+    return randomElements;
+  }
+
   public render() {
     // ID of the presentation ruleset used by all of the controls; the ruleset
     // can be found at `assets/presentation_rules/Default.PresentationRuleSet.xml`
