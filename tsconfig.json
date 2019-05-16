@@ -4,7 +4,8 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "baseUrl": "./node_modules",
-    "outDir": "./lib"
+    "outDir": "./lib",
+    "esModuleInterop": true
   },
   "include": [
     "./**/*.ts",
