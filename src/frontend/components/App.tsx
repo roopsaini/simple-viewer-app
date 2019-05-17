@@ -5,7 +5,7 @@
 import * as React from "react";
 import { Id64String, OpenMode } from "@bentley/bentleyjs-core";
 import { AccessToken, ConnectClient, IModelQuery, Project, Config } from "@bentley/imodeljs-clients";
-import { IModelApp, IModelConnection, FrontendRequestContext, AuthorizedFrontendRequestContext } from "@bentley/imodeljs-frontend";
+import { IModelApp, IModelConnection, FrontendRequestContext, AuthorizedFrontendRequestContext, ScreenViewport, FitViewTool } from "@bentley/imodeljs-frontend";
 import { Presentation, SelectionChangeEventArgs, ISelectionProvider } from "@bentley/presentation-frontend";
 import { Button, ButtonSize, ButtonType, Spinner, SpinnerSize } from "@bentley/ui-core";
 import { SignIn } from "@bentley/ui-components";
@@ -16,6 +16,7 @@ import TreeWidget from "./Tree";
 import ViewportContentControl from "./Viewport";
 import "@bentley/icons-generic-webfont/dist/bentley-icons-generic-webfont.css";
 import "./App.css";
+import { IModelUpdateRpcInterface } from "../../common/IModelUpdateRpcInterface";
 
 // tslint:disable: no-console
 // cSpell:ignore imodels
@@ -136,6 +137,8 @@ export default class App extends React.Component<{}, AppState> {
       return;
     }
     try {
+      const result = await IModelUpdateRpcInterface.getClient().sanitizeIModel(imodel.iModelToken, this.state.user.accessToken!, false);
+      result;
       // attempt to get a view definition
       const viewDefinitionId = imodel ? await this.getFirstViewDefinitionId(imodel) : undefined;
       this.setState({ imodel, viewDefinitionId });
@@ -239,7 +242,7 @@ class OpenIModelButton extends React.PureComponent<OpenIModelButtonProps, OpenIM
         imodel = await IModelConnection.openSnapshot(offlineIModel);
       } else {
         const info = await this.getIModelInfo();
-        imodel = await IModelConnection.open(info.projectId, info.imodelId, OpenMode.Readonly);
+        imodel = await IModelConnection.open(info.projectId, info.imodelId, OpenMode.ReadWrite);
       }
     } catch (e) {
       alert(e.message);
@@ -262,8 +265,16 @@ interface IModelComponentsProps {
   imodel: IModelConnection;
   viewDefinitionId: Id64String;
 }
+
 /** Renders a viewport, a tree, a property grid and a table */
 class IModelComponents extends React.PureComponent<IModelComponentsProps> {
+
+  public componentDidMount() {
+    IModelApp.viewManager.onViewOpen.addListener((vp: ScreenViewport) => {
+      IModelApp.tools.run(FitViewTool.toolId, vp);
+    });
+  }
+
   public render() {
     // ID of the presentation ruleset used by all of the controls; the ruleset
     // can be found at `assets/presentation_rules/Default.PresentationRuleSet.xml`
