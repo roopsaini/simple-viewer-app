@@ -12,7 +12,7 @@ export class SampleFeatureOverrideProvider implements FeatureOverrideProvider {
   // interface function to set feature overrides
   public addFeatureOverrides(_overrides: FeatureSymbology.Overrides, _viewport: Viewport) {
 
-    const defaultAppearance = FeatureSymbology.Appearance.fromRgba(ColorDef.white);
+    const defaultAppearance = FeatureSymbology.Appearance.fromTransparency(0);
     const appearance = FeatureSymbology.Appearance.fromRgba(ColorDef.from(0, 255, 0)); // green
 
     // set default appearance for all elements
