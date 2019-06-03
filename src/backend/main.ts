@@ -10,6 +10,7 @@ import { Presentation } from "@bentley/presentation-backend";
 import getSupportedRpcs from "../common/rpcs";
 import { RpcInterfaceDefinition, MobileRpcConfiguration } from "@bentley/imodeljs-common";
 import setupEnv from "../common/configuration";
+import { IModelUpdateRpcImpl } from "./IModelUpdateRpcImpl";
 // setup environment
 setupEnv();
 
@@ -18,6 +19,7 @@ Logger.initializeToConsole();
 
 // initialize imodeljs-backend
 IModelHost.startup();
+IModelUpdateRpcImpl.register();
 
 // initialize presentation-backend
 Presentation.initialize({

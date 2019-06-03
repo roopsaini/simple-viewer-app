@@ -16,6 +16,7 @@ import TreeWidget from "./Tree";
 import ViewportContentControl from "./Viewport";
 import "@bentley/icons-generic-webfont/dist/bentley-icons-generic-webfont.css";
 import "./App.css";
+import { IModelUpdateRpcInterface } from "../../common/IModelUpdateRpcInterface";
 
 // tslint:disable: no-console
 // cSpell:ignore imodels
@@ -136,6 +137,9 @@ export default class App extends React.Component<{}, AppState> {
       return;
     }
     try {
+      console.log("========== IModelUpdate: Started ==========");
+      await IModelUpdateRpcInterface.getClient().updateDepthData(imodel.iModelToken, this.state.user.accessToken!, false);
+      console.log("========== IModelUpdate: Finished ==========");
       // attempt to get a view definition
       const viewDefinitionId = imodel ? await this.getFirstViewDefinitionId(imodel) : undefined;
       this.setState({ imodel, viewDefinitionId });
@@ -239,7 +243,7 @@ class OpenIModelButton extends React.PureComponent<OpenIModelButtonProps, OpenIM
         imodel = await IModelConnection.openSnapshot(offlineIModel);
       } else {
         const info = await this.getIModelInfo();
-        imodel = await IModelConnection.open(info.projectId, info.imodelId, OpenMode.Readonly);
+        imodel = await IModelConnection.open(info.projectId, info.imodelId, OpenMode.ReadWrite);
       }
     } catch (e) {
       alert(e.message);
