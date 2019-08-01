@@ -4,8 +4,8 @@
 *--------------------------------------------------------------------------------------------*/
 import * as React from "react";
 import { Id64String, OpenMode } from "@bentley/bentleyjs-core";
-import { AccessToken, ConnectClient, IModelQuery, Project, Config } from "@bentley/imodeljs-clients";
-import { IModelApp, IModelConnection, FrontendRequestContext, AuthorizedFrontendRequestContext } from "@bentley/imodeljs-frontend";
+import { AccessToken, Config } from "@bentley/imodeljs-clients";
+import { IModelApp, IModelConnection, FrontendRequestContext } from "@bentley/imodeljs-frontend";
 import { Presentation, SelectionChangeEventArgs, ISelectionProvider } from "@bentley/presentation-frontend";
 import { Button, ButtonSize, ButtonType, Spinner, SpinnerSize } from "@bentley/ui-core";
 import { SignIn } from "@bentley/ui-components";
@@ -16,6 +16,9 @@ import TreeWidget from "./Tree";
 import ViewportContentControl from "./Viewport";
 import "@bentley/icons-generic-webfont/dist/bentley-icons-generic-webfont.css";
 import "./App.css";
+import * as querystring from "querystring";
+import * as url from "url";
+import { IModelVersion } from "@bentley/imodeljs-common";
 
 // tslint:disable: no-console
 // cSpell:ignore imodels
@@ -200,27 +203,36 @@ interface OpenIModelButtonState {
 class OpenIModelButton extends React.PureComponent<OpenIModelButtonProps, OpenIModelButtonState> {
   public state = { isLoading: false };
 
-  /** Finds project and imodel ids using their names */
-  private async getIModelInfo(): Promise<{ projectId: string, imodelId: string }> {
-    const projectName = Config.App.get("imjs_test_project");
-    const imodelName = Config.App.get("imjs_test_imodel");
-
-    const requestContext: AuthorizedFrontendRequestContext = await AuthorizedFrontendRequestContext.create();
-
-    const connectClient = new ConnectClient();
-    let project: Project;
-    try {
-      project = await connectClient.getProject(requestContext, { $filter: `Name+eq+'${projectName}'` });
-    } catch (e) {
-      throw new Error(`Project with name "${projectName}" does not exist`);
+  private getUrlQueryParams() {
+    const query = url.parse(document.URL).query;
+    const parsedQs: any = query ? querystring.parse(query.toString()) : undefined;
+    return parsedQs;
+  }
+  private getProjectIdFromURL() {
+      const urlParams = this.getUrlQueryParams();
+      return urlParams ? urlParams.projectId : undefined;
     }
+  private getIModelIdFromURL() {
+      const query = url.parse(document.URL).query;
+      const urlParams: any = query ? querystring.parse(query.toString()) : undefined;
+      return urlParams ? urlParams.imodelId : undefined;
+    }
+  private getChangesetIdFromURL() {
+    const query = url.parse(document.URL).query;
+    const urlParams: any = query ? querystring.parse(query.toString()) : undefined;
+    return urlParams ? urlParams.changesetId : undefined;
+  }
 
-    const imodelQuery = new IModelQuery();
-    imodelQuery.byName(imodelName);
-    const imodels = await IModelApp.iModelClient.iModels.get(requestContext, project.wsgId, imodelQuery);
-    if (imodels.length === 0)
-      throw new Error(`iModel with name "${imodelName}" does not exist in project "${projectName}"`);
-    return { projectId: project.wsgId, imodelId: imodels[0].wsgId };
+  /** Finds project and imodel ids using their names */
+  private async getIModelInfo() {
+    const projectId = this.getProjectIdFromURL();
+    const imodelId = this.getIModelIdFromURL();
+    const changesetId = this.getChangesetIdFromURL();
+
+    if (!projectId) throw new Error("Provide projectId as URL parameter. ?projectId=GUID&imodelId=GUID");
+    if (!imodelId) throw new Error("Provide imodelId as URL parameter. ?projectId=GUID&imodelId=GUID");
+
+    return { projectId, imodelId, changesetId};
   }
 
   /** Handle iModel open event */
@@ -239,7 +251,8 @@ class OpenIModelButton extends React.PureComponent<OpenIModelButtonProps, OpenIM
         imodel = await IModelConnection.openSnapshot(offlineIModel);
       } else {
         const info = await this.getIModelInfo();
-        imodel = await IModelConnection.open(info.projectId, info.imodelId, OpenMode.Readonly);
+        imodel = (!info.changesetId) ? await IModelConnection.open(info.projectId, info.imodelId, OpenMode.Readonly) :
+        await IModelConnection.open(info.projectId, info.imodelId, OpenMode.Readonly, IModelVersion.asOfChangeSet(info.changesetId));
       }
     } catch (e) {
       alert(e.message);
